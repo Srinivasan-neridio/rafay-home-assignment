@@ -1,67 +1,71 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 )
 
 type Contact struct {
-	mobile int
-	name   string
-	email  string
+	FirstName  string   `json:"first_name"`
+	MiddleName string   `json:"middle_name"`
+	LastName   string   `json:"last_name"`
+	Mobile     int      `json:"mobile"`
+	Email      string   `json:"mail"`
+	Company    string   `json:"company"`
+	Location   string   `json:"location"`
+	AddMobile  []int    `json:"extra mobile"`
+	AddEmails  []string `json:"extra mails"`
 	phone
 }
 
 type phone interface {
-	call()
-	message()
-	edit()
-	delt()
-	print()
+	Call()
+	Message()
+	Edit()
+	Delete()
 }
 
-func (member *Contact) call() {
-	fmt.Println("Calling the person ", member.name)
-	fmt.Println("Calling the mail ", member.email)
-	fmt.Println("Calling the mobile ", member.mobile)
+func (member *Contact) Call() {
+	fmt.Printf("Calling Mr %s %s %s", member.FirstName, member.MiddleName, member.LastName)
 }
 
-func (member *Contact) message(message string) {
-	fmt.Printf("The message is %s\n", message)
+func (member *Contact) Message(message string) {
 }
 
-func (member *Contact) edit(name, mail string, phone int) {
-	member.name = name
-	member.email = mail
-	member.mobile = phone
-	member.print()
+func (member *Contact) Edit(name, mail string, phone int) {
 }
 
-func (member *Contact) delt() {
-	member.name = ""
-	member.email = ""
-	member.mobile = 0
+func (member *Contact) Delete() {
 }
 
-func (member *Contact) print() {
-	fmt.Println("\nName: ", member.name)
-	fmt.Println("Email: ", member.email)
-	fmt.Println("Mobile: ", member.mobile)
+func CreateContact() error {
+	var member Contact
+	fmt.Printf("\nEnter your first name: ")
+	fmt.Scanf("%s", &member.FirstName)
+	fmt.Printf("\nEnter your middled name: ")
+	fmt.Scanf("\n%s", &member.MiddleName)
+	fmt.Printf("\nEnter your last name: ")
+	fmt.Scanf("\n%s", &member.LastName)
+	fmt.Printf("\nEnter your mobile number name: ")
+	fmt.Scanf("\n%d", &member.Mobile)
+	fmt.Printf("\nEnter your email id: ")
+	fmt.Scanf("\n%s", &member.Email)
+	fmt.Printf("\nEnter your company name: ")
+	fmt.Scanf("\n%s", &member.Company)
+	data, err := json.Marshal(member)
+	if err != nil {
+		fmt.Printf("\nJson marshalling failed: %s", err)
+		return err
+	}
+	err = os.WriteFile("contact.json", data, 0777)
+	if err != nil {
+		fmt.Printf("\nWrite failed: %s", err)
+		return err
+	}
+	return nil
 }
 
 func main() {
-	var member Contact
-	memberPtr := &member
-	memberPtr.name = "Srinivasan"
-	memberPtr.email = "test@mail.com"
-	memberPtr.mobile = 12345
-	memberPtr.call()
-	memberPtr.message("Hello how are you ?")
-	newname := "Raju"
-	newmail := "raju@mail.com"
-	newphone := 54321
-	memberPtr.edit(newname, newmail, newphone)
-	memberPtr.call()
-	memberPtr.message("Hey, what's up ?")
-	memberPtr.delt()
-	memberPtr.print()
+	CreateContact()
 }
