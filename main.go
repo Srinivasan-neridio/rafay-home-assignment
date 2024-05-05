@@ -16,10 +16,10 @@ type Contact struct {
 	Location   string   `json:"location"`
 	AddMobile  []int    `json:"extra mobile"`
 	AddEmails  []string `json:"extra mails"`
-	phone
+	Phone
 }
 
-type phone interface {
+type Phone interface {
 	Call()
 	Message()
 	Edit()
@@ -27,7 +27,7 @@ type phone interface {
 }
 
 func (member *Contact) Call() {
-	fmt.Printf("Calling Mr %s %s %s", member.FirstName, member.MiddleName, member.LastName)
+	fmt.Printf("Calling to Mr. %s %s %s", member.FirstName, member.MiddleName, member.LastName)
 }
 
 func (member *Contact) Message(message string) {
@@ -66,6 +66,80 @@ func CreateContact() error {
 	return nil
 }
 
+func CallContact(name string) {
+
+}
+
+func SearchContact(name string) error {
+	var member Contact
+	data, err := os.ReadFile("contact.json")
+	if err != nil {
+		fmt.Printf("\nError in read: %s", err)
+		return err
+	}
+	err = json.Unmarshal(data, &member)
+	if err != nil {
+		fmt.Printf("\nError in json unmarshal: %s", err)
+		return err
+	}
+	fmt.Println(member)
+	return nil
+}
+
+func SendMessage(name, message string) {
+
+}
+
+func SearchMessage(message string) error {
+	var member Contact
+	data, err := os.ReadFile("message.json")
+	if err != nil {
+		fmt.Printf("\nError in read: %s", err)
+		return err
+	}
+	err = json.Unmarshal(data, &member)
+	if err != nil {
+		fmt.Printf("\nError in json unmarshal: %s", err)
+		return err
+	}
+	fmt.Println(member)
+	return nil
+}
+
+func GetTop10Contact() error {
+	var member Contact
+	data, err := os.ReadFile("activity.json")
+	if err != nil {
+		fmt.Printf("\nError in read file: %s", err)
+		return err
+	}
+	err = json.Unmarshal(data, &member)
+	if err != nil {
+		fmt.Printf("\nError in json unmarshal: %s", err)
+		return err
+	}
+	fmt.Println(member)
+	return nil
+}
+
+func GetCallHistory() error {
+	var member Contact
+	data, err := os.ReadFile("history.json")
+	if err != nil {
+		fmt.Printf("\nError in read file: %s", err)
+		return err
+	}
+	err = json.Unmarshal(data, &member)
+	if err != nil {
+		fmt.Printf("\nError in json unmarshal: %s", err)
+		return err
+	}
+	fmt.Println(member)
+	return nil
+}
+
 func main() {
-	CreateContact()
+	// CreateContact()
+	SearchContact("Srinivasan")
+	SearchMessage("Hello srinivasan")
 }
