@@ -1,9 +1,7 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"time"
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
@@ -32,6 +30,8 @@ type Phone interface {
 
 func (member *Contact) Call(db *sql.DB) error {
 	
+	fmt.Printf("\nIn Call()")
+
 	call := fmt.Sprintf("%v : Called to Mr. %s %s %s [mobile: %s]", time.Now(), member.FirstName, member.MiddleName, member.LastName, member.Mobile)
 
 	_, err := db.Exec("create table if not exists history (id int auto_increment primary key, call_history varchar(255), message_history varchar(255))")
@@ -51,6 +51,8 @@ func (member *Contact) Call(db *sql.DB) error {
 
 func (member *Contact) Message(db *sql.DB, message string) error {
 	
+	fmt.Printf("\nIn Message() message %s", message)
+
 	messageHis := fmt.Sprintf("%v : %s message sent to Mr. %s %s %s [mobile: %s]", time.Now(), message, member.FirstName, member.MiddleName, member.LastName, member.Mobile)
 
 	_, err := db.Exec("create table if not exists history (id int auto_increment primary key, call_history varchar(255), message_history varchar(255))")
@@ -80,6 +82,7 @@ func CreateContact(db *sql.DB) error {
 	
 	var member Contact
 
+	fmt.Printf("\nIn CreateContact()")
 	_, err := db.Exec("create table if not exists contact (id int auto_increment primary key, first_name varchar(255) unique, middle_name varchar(255) unique, last_name varchar(255) unique, mobile varchar(255), mail varchar(255), company varchar(255), location varchar(255), extra_mobile varchar(255), extra_mails varchar(255));")
 	if err != nil {
 		fmt.Printf("\nError to create db: %s\n", err)
@@ -110,6 +113,7 @@ func CallContact(db *sql.DB, name string) error {
 	var member Contact
 	var extraMobile, extraMail string
 
+	fmt.Printf("\nIn CallContact() %s", name)
 	err := db.QueryRow("select * from contact where id = ? or first_name = ? or middle_name = ? or last_name = ?;", name, name, name, name).Scan(&member.ID, &member.FirstName, &member.MiddleName, &member.LastName, &member.Mobile, &member.Email, &member.Company, &member.Location, &extraMobile, &extraMail)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -120,7 +124,7 @@ func CallContact(db *sql.DB, name string) error {
 		}
 	}
 
-	fmt.Println(member.FirstName, member.MiddleName, member.LastName, member.Mobile, member.Email, member.Company, member.Location, extraMobile, extraMail)
+	fmt.Println("\n", member.FirstName, member.MiddleName, member.LastName, member.Mobile, member.Email, member.Company, member.Location, extraMobile, extraMail)
 	member.Call(db)
 
 	return nil
@@ -131,6 +135,7 @@ func SearchContact(db *sql.DB, name string) error {
 	var member Contact
 	var extraMobile, extraMail string
 
+	fmt.Printf("\nIn SearchContact() %s", name)
 	err := db.QueryRow("select * from contact where first_name = ? or middle_name = ? or last_name = ? or mobile = ? or mail = ? or company = ? or location = ? or extra_mobile = ? or extra_mails = ?;", name, name, name, name, name, name, name, name, name).Scan(&member.ID, &member.FirstName, &member.MiddleName, &member.LastName, &member.Mobile, &member.Email, &member.Company, &member.Location, &extraMobile, &extraMail)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -141,60 +146,114 @@ func SearchContact(db *sql.DB, name string) error {
 		}
 	}
 
-	fmt.Println(member.FirstName, member.MiddleName, member.LastName, member.Mobile, member.Email, member.Company, member.Location, extraMobile, extraMail)
+	fmt.Println("\n", member.FirstName, member.MiddleName, member.LastName, member.Mobile, member.Email, member.Company, member.Location, extraMobile, extraMail)
 	return nil
 }
 
-func SendMessage(name, message string) {
-	// create table if not exists message (contact varchar(20), message varchar(20));
-
-}
-
-func SearchMessage(message string) error {
+func SendMessage(db *sql.DB, name, message string) error {
+	
 	var member Contact
-	data, err := os.ReadFile("message.json")
+	var extraMobile, extraMail string
+
+	fmt.Printf("\nIn SendMessage() %s %s", name, message)
+	err := db.QueryRow("select * from contact where id = ? or first_name = ? or middle_name = ? or last_name = ?;", name, name, name, name).Scan(&member.ID, &member.FirstName, &member.MiddleName, &member.LastName, &member.Mobile, &member.Email, &member.Company, &member.Location, &extraMobile, &extraMail)
 	if err != nil {
-		fmt.Printf("\nError in read: %s", err)
-		return err
+		if err == sql.ErrNoRows {
+			fmt.Printf("\nNo rows found %s: %s", name, err)
+		} else {
+			fmt.Printf("\nError to query %s: %s", name, err)
+			return err
+		}
 	}
-	err = json.Unmarshal(data, &member)
-	if err != nil {
-		fmt.Printf("\nError in json unmarshal: %s", err)
-		return err
-	}
-	fmt.Println(member)
+
+	fmt.Println("\n", member.FirstName, member.MiddleName, member.LastName, member.Mobile, member.Email, member.Company, member.Location, extraMobile, extraMail)
+	member.Message(db, message)
+
 	return nil
 }
 
-func GetTop10Contact() error {
-	var member Contact
-	data, err := os.ReadFile("activity.json")
+func SearchMessage(db *sql.DB, message string) error {
+	
+	var msg string
+
+	fmt.Printf("\nIn SearchMessage() %s", message)
+	datas, err := db.Query("select message_history from history;")
 	if err != nil {
-		fmt.Printf("\nError in read file: %s", err)
+		fmt.Printf("\nError to query %s: %s", message, err)
 		return err
 	}
-	err = json.Unmarshal(data, &member)
-	if err != nil {
-		fmt.Printf("\nError in json unmarshal: %s", err)
-		return err
+	defer datas.Close()
+
+	for datas.Next() {
+		err = datas.Scan(&msg)
+		if err != nil {
+			fmt.Printf("\nError to scan: %s", err)
+		}
+		fmt.Printf("\nmsg %s", msg)
 	}
-	fmt.Println(member)
+
+	err = datas.Err()
+	if err != nil {
+		fmt.Printf("\nError in row scan: %s", err)
+	}
+
 	return nil
 }
 
-func GetCallHistory() error {
-	var member Contact
-	data, err := os.ReadFile("history.json")
+func GetTop10Contact(db *sql.DB) error {
+	
+	var id int
+	var call, msg string
+
+	fmt.Printf("\nIn GetTop10Contact()")
+	datas, err := db.Query("select * from history;")
 	if err != nil {
-		fmt.Printf("\nError in read file: %s", err)
+		fmt.Printf("\nError to query: %s", err)
 		return err
 	}
-	err = json.Unmarshal(data, &member)
+	defer datas.Close()
+
+	for datas.Next() {
+		err = datas.Scan(&id, &call, &msg)
+		if err != nil {
+			fmt.Printf("\nError to scan: %s", err)
+		}
+		fmt.Printf("\nid %d, call %s, message %v", id, call, msg)
+	}
+
+	err = datas.Err()
 	if err != nil {
-		fmt.Printf("\nError in json unmarshal: %s", err)
+		fmt.Printf("\nError in row scan: %s", err)
+	}
+
+	return nil
+}
+
+func GetCallHistory(db *sql.DB) error {
+
+	var call string
+
+	fmt.Printf("\nIn GetCallHistory()")
+	datas, err := db.Query("select call_history from history;")
+	if err != nil {
+		fmt.Printf("\nError to query: %s", err)
 		return err
 	}
-	fmt.Println(member)
+	defer datas.Close()
+
+	for datas.Next() {
+		err = datas.Scan(&call)
+		if err != nil {
+			fmt.Printf("\nError to scan: %s", err)
+		}
+		fmt.Printf("\ncall history: %s", call)
+	}
+
+	err = datas.Err()
+	if err != nil {
+		fmt.Printf("\nError in row scan: %s", err)
+	}
+
 	return nil
 }
 
@@ -210,6 +269,9 @@ func main() {
 	CreateContact(db)
 	CallContact(db, "S")
 	SearchContact(db, "Srinivasan")
+	SendMessage(db, "Srinivasan", "Hey! what's up ?")
+	SearchMessage(db, "Hey! what's up ?")
+	// GetCallHistory(db)
 
 	return
 }
