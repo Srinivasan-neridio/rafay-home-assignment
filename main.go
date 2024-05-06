@@ -1,23 +1,23 @@
 package main
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
-
+	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
 )
 
 type Contact struct {
+	ID int `json:"id"`
 	FirstName  string   `json:"first_name"`
 	MiddleName string   `json:"middle_name"`
 	LastName   string   `json:"last_name"`
-	Mobile     string   `json:"mobile"`
+	Mobile     string      `json:"mobile"`
 	Email      string   `json:"mail"`
 	Company    string   `json:"company"`
 	Location   string   `json:"location"`
-	AddMobile  []string `json:"extra_mobile"`
+	AddMobile  []string    `json:"extra_mobile"`
 	AddEmails  []string `json:"extra_mails"`
 	Phone
 }
@@ -29,7 +29,7 @@ type Phone interface {
 	Delete()
 }
 
-func (member *Contact) Call(name string) {
+func (member *Contact) Call() {
 	fmt.Printf("Calling to Mr. %s %s %s", member.FirstName, member.MiddleName, member.LastName)
 }
 
@@ -45,7 +45,7 @@ func (member *Contact) Delete() {
 }
 
 func CreateContact(db *sql.DB) error {
-
+	
 	var member Contact
 
 	_, err := db.Exec("create table if not exists contact (id int auto_increment primary key, first_name varchar(255) unique, middle_name varchar(255) unique, last_name varchar(255) unique, mobile varchar(255), mail varchar(255), company varchar(255), location varchar(255), extra_mobile varchar(255), extra_mails varchar(255));")
@@ -61,8 +61,8 @@ func CreateContact(db *sql.DB) error {
 	member.Email = "srinivasan@athinio.com"
 	member.Company = "Neridio"
 	member.Location = "Bangalore"
-	member.AddMobile = append(member.AddMobile, "8220155210")
-	member.AddEmails = append(member.AddEmails, "mrsrinivasanofficial@gmail.com")
+	member.AddMobile = append(member.AddMobile,"8220155210")
+	member.AddEmails = append(member.AddEmails,"mrsrinivasanofficial@gmail.com")
 
 	_, err = db.Exec("insert into contact (first_name, middle_name, last_name, mobile, mail, company, location, extra_mobile, extra_mails) values(?, ?, ?, ?, ?, ?, ?, ?, ?);", member.FirstName, member.MiddleName, member.LastName, member.Mobile, member.Email, member.Company, member.Location, member.AddMobile[0], member.AddEmails[0])
 	if err != nil {
@@ -74,19 +74,42 @@ func CreateContact(db *sql.DB) error {
 }
 
 func CallContact(db *sql.DB, name string) error {
-	SearchContact(db, name)
+	
+	var member Contact
+	var extraMobile, extraMail string
+
+	err := db.QueryRow("select * from contact where id = ? or first_name = ? or middle_name = ? or last_name = ?;", name, name, name, name).Scan(&member.ID, &member.FirstName, &member.MiddleName, &member.LastName, &member.Mobile, &member.Email, &member.Company, &member.Location, &extraMobile, &extraMail)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			fmt.Printf("\nNo rows found %s: %s", name, err)
+		} else {
+			fmt.Printf("\nError to query %s: %s", name, err)
+			return err
+		}
+	}
+
+	fmt.Println(member.FirstName, member.MiddleName, member.LastName, member.Mobile, member.Email, member.Company, member.Location, extraMobile, extraMail)
+	member.Call()
+
 	return nil
 }
 
 func SearchContact(db *sql.DB, name string) error {
+	
+	var member Contact
+	var extraMobile, extraMail string
 
-	_, err := db.Query("select * from contact where first_name = ? or middle_name = ? or last_name = ?;", name, name, name)
+	err := db.QueryRow("select * from contact where first_name = ? or middle_name = ? or last_name = ? or mobile = ? or mail = ? or company = ? or location = ? or extra_mobile = ? or extra_mails = ?;", name, name, name, name, name, name, name, name, name).Scan(&member.ID, &member.FirstName, &member.MiddleName, &member.LastName, &member.Mobile, &member.Email, &member.Company, &member.Location, &extraMobile, &extraMail)
 	if err != nil {
-		fmt.Printf("\nError to query %s: %s", name, err)
-		return err
+		if err == sql.ErrNoRows {
+			fmt.Printf("\nNo rows found %s: %s", name, err)
+		} else {
+			fmt.Printf("\nError to query %s: %s", name, err)
+			return err
+		}
 	}
 
-	fmt.Printf("\nQuery %s successfull", name)
+	fmt.Println(member.FirstName, member.MiddleName, member.LastName, member.Mobile, member.Email, member.Company, member.Location, extraMobile, extraMail)
 	return nil
 }
 
@@ -144,7 +167,7 @@ func GetCallHistory() error {
 }
 
 func main() {
-
+	
 	db, err := sql.Open("mysql", "root:athinio@tcp(127.0.0.1:3306)/contacts")
 	if err != nil {
 		fmt.Printf("\nError to open db: %s", err)
@@ -153,8 +176,8 @@ func main() {
 	defer db.Close()
 
 	CreateContact(db)
-	SearchContact(db, "Devil")
-	CallContact(db, "Sekar")
+	SearchContact(db, "Srinivasan")
+	CallContact(db, "S")
 
 	return
 }
