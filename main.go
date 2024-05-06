@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -29,11 +30,42 @@ type Phone interface {
 	Delete()
 }
 
-func (member *Contact) Call() {
-	fmt.Printf("Calling to Mr. %s %s %s", member.FirstName, member.MiddleName, member.LastName)
+func (member *Contact) Call(db *sql.DB) error {
+	
+	call := fmt.Sprintf("%v : Called to Mr. %s %s %s [mobile: %s]", time.Now(), member.FirstName, member.MiddleName, member.LastName, member.Mobile)
+
+	_, err := db.Exec("create table if not exists history (id int auto_increment primary key, call_history varchar(255), message_history varchar(255))")
+	if err != nil {
+		fmt.Printf("\nError to create db: %s", err)
+		return err
+	}
+
+	_, err = db.Exec("insert into history (call_history) values (?)", call)
+	if err != nil {
+		fmt.Printf("\nError to insert value: %s", err)
+		return err
+	}
+
+	return nil
 }
 
-func (member *Contact) Message(message string) {
+func (member *Contact) Message(db *sql.DB, message string) error {
+	
+	messageHis := fmt.Sprintf("%v : %s message sent to Mr. %s %s %s [mobile: %s]", time.Now(), message, member.FirstName, member.MiddleName, member.LastName, member.Mobile)
+
+	_, err := db.Exec("create table if not exists history (id int auto_increment primary key, call_history varchar(255), message_history varchar(255))")
+	if err != nil {
+		fmt.Printf("\nError to create db: %s", err)
+		return err
+	}
+
+	_, err = db.Exec("insert into history (message_history) values (?)", messageHis)
+	if err != nil {
+		fmt.Printf("\nError to insert value: %s", err)
+		return err
+	}
+
+	return nil
 }
 
 func (member *Contact) Edit(name, mail string, phone int) {
@@ -89,7 +121,7 @@ func CallContact(db *sql.DB, name string) error {
 	}
 
 	fmt.Println(member.FirstName, member.MiddleName, member.LastName, member.Mobile, member.Email, member.Company, member.Location, extraMobile, extraMail)
-	member.Call()
+	member.Call(db)
 
 	return nil
 }
@@ -176,8 +208,8 @@ func main() {
 	defer db.Close()
 
 	CreateContact(db)
-	SearchContact(db, "Srinivasan")
 	CallContact(db, "S")
+	SearchContact(db, "Srinivasan")
 
 	return
 }
