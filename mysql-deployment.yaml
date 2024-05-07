@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-deployment
+  namespace: srini
+spec:
+  selector:
+    matchLabels:
+      app: mysql-app
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mysql-app
+    spec:
+      containers:
+      - name: mysql-cont
+        image: mrsrinivasan/contact-app:v1.4
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: neridio
