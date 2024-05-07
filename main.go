@@ -8,16 +8,16 @@ import (
 )
 
 type Contact struct {
-	ID int `json:"id"`
+	ID int              `json:"id"`
 	FirstName  string   `json:"first_name"`
 	MiddleName string   `json:"middle_name"`
 	LastName   string   `json:"last_name"`
-	Mobile     string      `json:"mobile"`
+	Mobile     string   `json:"mobile"`
 	Email      string   `json:"mail"`
 	Company    string   `json:"company"`
 	Location   string   `json:"location"`
-	AddMobile  string    `json:"extra_mobile"`
-	AddEmails  string `json:"extra_mails"`
+	AddMobile  string   `json:"extra_mobile"`
+	AddEmails  string   `json:"extra_mails"`
 	Phone
 }
 
@@ -32,19 +32,21 @@ func (member *Contact) Call(db *sql.DB) error {
 	
 	fmt.Printf("\nIn Call()")
 
-	call := fmt.Sprintf("%v : Called to Mr. %s %s %s [mobile: %s]", time.Now(), member.FirstName, member.MiddleName, member.LastName, member.Mobile)
+	callHistory := fmt.Sprintf("%v : Called to Mr. %s %s %s [mobile: %s]", time.Now(), member.FirstName, member.MiddleName, member.LastName, member.Mobile)
 
-	_, err := db.Exec("create table if not exists history (id int auto_increment primary key, call_history varchar(255), message_history varchar(255))")
+	_, err := db.Exec("create table if not exists history (id int auto_increment primary key, call_history varchar(255));")
 	if err != nil {
 		fmt.Printf("\nError to create db: %s", err)
 		return err
 	}
 
-	_, err = db.Exec("insert into history (call_history) values (?)", call)
+	_, err = db.Exec("insert into history (call_history) values (?);", callHistory)
 	if err != nil {
 		fmt.Printf("\nError to insert value: %s", err)
 		return err
 	}
+
+	UpdateActivity(db, callHistory)
 
 	return nil
 }
@@ -53,19 +55,21 @@ func (member *Contact) Message(db *sql.DB, message string) error {
 	
 	fmt.Printf("\nIn Message() message %s", message)
 
-	messageHis := fmt.Sprintf("%v : %s message sent to Mr. %s %s %s [mobile: %s]", time.Now(), message, member.FirstName, member.MiddleName, member.LastName, member.Mobile)
+	messageHistory := fmt.Sprintf("%v : %s message sent to Mr. %s %s %s [mobile: %s]", time.Now(), message, member.FirstName, member.MiddleName, member.LastName, member.Mobile)
 
-	_, err := db.Exec("create table if not exists history (id int auto_increment primary key, call_history varchar(255), message_history varchar(255))")
+	_, err := db.Exec("create table if not exists message (id int auto_increment primary key, message_history varchar(255));")
 	if err != nil {
 		fmt.Printf("\nError to create db: %s", err)
 		return err
 	}
 
-	_, err = db.Exec("insert into history (message_history) values (?)", messageHis)
+	_, err = db.Exec("insert into message (message_history) values (?);", messageHistory)
 	if err != nil {
 		fmt.Printf("\nError to insert value: %s", err)
 		return err
 	}
+
+	UpdateActivity(db, messageHistory)
 
 	return nil
 }
@@ -74,7 +78,7 @@ func (member *Contact) Edit(db *sql.DB) error {
 	
 	fmt.Printf("\nIn Edit()")
 	
-	_, err := db.Exec("update contact set id = ?, first_name = ?, middle_name = ?, last_name = ?, mobile = ?, mail = ?, company = ?, location = ?, extra_mobile = ?, extra_mails = ?", member.ID, member.FirstName, member.MiddleName, member.LastName, member.Mobile, member.Email, member.Company, member.Location, member.AddMobile, member.AddEmails);
+	_, err := db.Exec("update contact set id = ?, first_name = ?, middle_name = ?, last_name = ?, mobile = ?, mail = ?, company = ?, location = ?, extra_mobile = ?, extra_mails = ?;", member.ID, member.FirstName, member.MiddleName, member.LastName, member.Mobile, member.Email, member.Company, member.Location, member.AddMobile, member.AddEmails);
 	if err != nil {
 		fmt.Printf("\nError to update db: %s", err)
 		return err
@@ -87,7 +91,7 @@ func (member *Contact) Delete(db *sql.DB) error {
 	
 	fmt.Printf("\nIn Delete()")
 	
-	_, err := db.Exec("delete from contact where id = ?", member.ID);
+	_, err := db.Exec("delete from contact where id = ?;", member.ID);
 	if err != nil {
 		fmt.Printf("\nError to update db: %s", err)
 		return err
@@ -190,9 +194,10 @@ func SendMessage(db *sql.DB, name, message string) error {
 func SearchMessage(db *sql.DB, message string) error {
 	
 	var msg string
+	var msgSearch []string
 
 	fmt.Printf("\nIn SearchMessage() %s", message)
-	datas, err := db.Query("select message_history from history;")
+	datas, err := db.Query("select message_history from message;")
 	if err != nil {
 		fmt.Printf("\nError to query %s: %s", message, err)
 		return err
@@ -204,12 +209,17 @@ func SearchMessage(db *sql.DB, message string) error {
 		if err != nil {
 			fmt.Printf("\nError to scan: %s", err)
 		}
-		fmt.Printf("\nmsg %s", msg)
+		msgSearch = append(msgSearch, msg)
 	}
 
 	err = datas.Err()
 	if err != nil {
 		fmt.Printf("\nError in row scan: %s", err)
+	}
+
+	fmt.Printf("\n\n**************** Search result for: %s in messages ****************\n", message)
+	for _, value := range msgSearch {
+		fmt.Printf("\n%s", value)
 	}
 
 	return nil
@@ -279,10 +289,11 @@ func DeleteContact(db *sql.DB, name string) error {
 func GetTop10Contact(db *sql.DB) error {
 	
 	var id int
-	var call, msg string
+	var activity string
+	var top10activities []string
 
 	fmt.Printf("\nIn GetTop10Contact()")
-	datas, err := db.Query("select * from history;")
+	datas, err := db.Query("select * from activity;")
 	if err != nil {
 		fmt.Printf("\nError to query: %s", err)
 		return err
@@ -290,16 +301,30 @@ func GetTop10Contact(db *sql.DB) error {
 	defer datas.Close()
 
 	for datas.Next() {
-		err = datas.Scan(&id, &call, &msg)
+		err = datas.Scan(&id, &activity)
 		if err != nil {
 			fmt.Printf("\nError to scan: %s", err)
 		}
-		fmt.Printf("\nid %d, call %s, message %v", id, call, msg)
+		fmt.Printf("\nactivity === %s", activity)
+		top10activities = append(top10activities, activity)
 	}
 
 	err = datas.Err()
 	if err != nil {
 		fmt.Printf("\nError in row scan: %s", err)
+	}
+
+	for start, end := 0, len(top10activities)-1; start < end; start, end = start+1, end-1 {
+		top10activities[start], top10activities[end] = top10activities[end], top10activities[start]
+	}
+
+	fmt.Printf("\n\n**************** Top 10 Contact based on Activites ****************\n")
+
+	for count, top10 := range top10activities {
+		fmt.Printf("\n%s", top10)
+		if count == 9 {
+			break
+		}
 	}
 
 	return nil
@@ -308,6 +333,7 @@ func GetTop10Contact(db *sql.DB) error {
 func GetCallHistory(db *sql.DB) error {
 
 	var call string
+	var callHistory []string
 
 	fmt.Printf("\nIn GetCallHistory()")
 	datas, err := db.Query("select call_history from history;")
@@ -322,12 +348,34 @@ func GetCallHistory(db *sql.DB) error {
 		if err != nil {
 			fmt.Printf("\nError to scan: %s", err)
 		}
-		fmt.Printf("\ncall history: %s", call)
+		callHistory = append(callHistory, call)
 	}
 
 	err = datas.Err()
 	if err != nil {
 		fmt.Printf("\nError in row scan: %s", err)
+	}
+
+	fmt.Printf("\n\n**************** Call history ****************\n")
+	for _, value := range callHistory {
+		fmt.Printf("\n%s", value)
+	}
+
+	return nil
+}
+
+func UpdateActivity(db *sql.DB, content string) error {
+
+	_, err := db.Exec("create table if not exists activity (id int auto_increment primary key, activities varchar(255))")
+	if err != nil {
+		fmt.Printf("\nError to create db: %s", err)
+		return err
+	}
+
+	_, err = db.Exec("insert into activity (activities) values (?)", content)
+	if err != nil {
+		fmt.Printf("\nError to insert value: %s", err)
+		return err
 	}
 
 	return nil
@@ -342,13 +390,15 @@ func main() {
 	}
 	defer db.Close()
 
-	CreateContact(db)
-	CallContact(db, "S")
-	SearchContact(db, "Srinivasan")
-	SendMessage(db, "Srinivasan", "Hey! what's up ?")
+	// CreateContact(db)
+	// CallContact(db, "S")
+	// SearchContact(db, "Srinivasan")
+	// SendMessage(db, "Srinivasan", "Hey! what's up ?")
 	// SearchMessage(db, "Hey! what's up ?")
-	EditContact(db, "Srinivasan")
-	DeleteContact(db, "Devil")
+	// EditContact(db, "Srinivasan")
+	// DeleteContact(db, "Devil")
+	GetTop10Contact(db)
+	// GetCallHistory(db)
 
 	return
 }
